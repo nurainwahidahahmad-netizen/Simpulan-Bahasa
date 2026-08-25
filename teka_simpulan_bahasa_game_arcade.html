@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="ms" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Teka Simpulan Bahasa - Arcade Master</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        * {
+            touch-action: manipulation;
+        }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: #0d0e15;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.25) 0%, transparent 45%),
+                radial-gradient(circle at 85% 80%, rgba(236, 72, 153, 0.2) 0%, transparent 45%),
+                radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.15) 0%, transparent 50%);
+            background-attachment: fixed;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow-x: hidden;
+        }
+        .font-game {
+            font-family: 'Fredoka', cursive, sans-serif;
+        }
+        .glass-panel {
+            background: rgba(22, 27, 46, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+        }
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .glass-btn:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.03);
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .glass-btn:active:not(:disabled) {
+            transform: translateY(1px) scale(0.98);
+        }
+        .game-card {
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .game-card:hover:not(.matched):not(.disabled) {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+            border-color: rgba(129, 140, 248, 0.6);
+        }
+        .game-card.selected {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.25);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.6), inset 0 0 10px rgba(99, 102, 241, 0.3);
+            transform: translateY(-4px) scale(1.03);
+        }
+        .game-card.matched {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.2);
+            opacity: 0.55;
+            cursor: default;
+            transform: none !important;
+        }
+        .pulse-glow {
+            animation: pulseGlow 2s infinite alternate;
+        }
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
+            100% { box-shadow: 0 0 25px rgba(245, 158, 11, 0.9); }
+        }
+        .shake-anim {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+            40%, 60% { transform: translate3d(6px, 0, 0); }
+        }
+        .pop-in {
+            animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.7); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.4);
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.7);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col justify-between p-2 sm:p-4 select-none">
+
+    <!-- Confetti Overlay Canvas -->
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+    <!-- Header / Navbar -->
+    <header class="max-w-4xl mx-auto w-full glass-panel rounded-2xl p-3 flex justify-between items-center z-10 mb-2 sm:mb-4">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="showScreen('screen-menu')">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-xl shadow-lg shadow-amber-500/20">
+                🎮
+            </div>
+            <div>
+                <h1 class="font-game text-lg sm:text-xl font-bold bg-gradient-to-r from-amber-300 via-orange-300 to-pink-400 bg-clip-text text-transparent">
+                    SIMPULAN MASTER
+                </h1>
+                <p class="text-[10px] sm:text-xs text-indigo-300 font-semibold tracking-wider uppercase">Edisi Arcade 2026</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-950/60 border border-indigo-500/30 text-amber-300 font-game text-xs sm:text-sm">
+                <i class="fa-solid fa-trophy text-amber-400"></i>
+                <span id="nav-high-score">0</span>
+            </div>
+            <button id="btn-sound" onclick="toggleAudio()" class="glass-btn w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-amber-400">
+                <i id="sound-icon" class="fa-solid fa-volume-high text-sm sm:text-base"></i>
+            </button>
+            <button onclick="openModal('modal-kamus')" class="glass-btn px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs font-semibold text-cyan-300">
+                <i class="fa-solid fa-book-bookmark text-sm"></i>
+                <span class="hidden sm:inline">Kamus</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto w-full flex-grow flex flex-col justify-center my-auto z-10 py-2">
+
+        <!-- SCREEN 1: MENU UTAMA -->
+        <section id="screen-menu" class="flex flex-col items-center justify-center text-center max-w-xl mx-auto w-full space-y-6 pop-in">
+            <div class="relative">
+                <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-amber-400 via-orange-500 to-indigo-600 flex items-center justify-center text-5xl sm:text-6xl shadow-2xl pulse-glow mb-2">
+                    🧩
+                </div>
+                <span class="absolute -top-2 -right-2 bg-gradient-to-r from-pink-500 to-purple-600 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider text-white border border-white/20 shadow-lg">
+                    VIP Arcade
+                </span>
+            </div>
+
+            <div>
+                <h2 class="font-game text-3xl sm:text-4xl font-extrabold text-white tracking-wide mb-2">
+                    Teka Simpulan Bahasa
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                    Uji minda anda dengan padanan gambar visual & kuiz maksud simpulan bahasa Melayu yang menarik dan mencabar!
+                </p>
+            </div>
+
+            <!-- Mode Selection Buttons -->
+            <div class="w-full space-y-3 pt-2">
+                <button onclick="selectMode('adventure')" class="w-full p-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-game font-bold text-lg flex items-center justify-between shadow-lg shadow-orange-500/25 transition transform hover:-translate-y-1 active:translate-y-0">
+                    <div class="flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-slate-950/20 flex items-center justify-center text-2xl text-slate-900">🗺️</span>
+                        <div class="text-left">
+                            <span class="block leading-tight">Pengembaraan Level</span>
+                            <span class="text-xs text-amber-950 font-sans font-semibold opacity-80">10 Level + Bintang ⭐</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-base text-slate-900"></i>
+                </button>
+
+                <button onclick="selectMode('timeattack')" class="w-full p-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-purple-500 text-white font-game font-bold text-lg flex items-center justify-between shadow-lg shadow-indigo-600/30 transition transform hover:-translate-y-1 active:translate-y-0">
+                    <div class="flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-2xl">⚡</span>
+                        <div class="text-left">
+                            <span class="block leading-tight">Cabaran Masa (60s)</span>
+                            <span class="text-xs text-indigo-200 font-sans font-semibold">Skor Maksimum & Combo</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-base"></i>
+                </button>
+            </div>
+
+            <!-- Additional Quick Actions -->
+            <div class="flex gap-3 w-full pt-1">
+                <button onclick="openModal('modal-panduan')" class="flex-1 py-3 glass-btn rounded-xl font-semibold text-xs sm:text-sm text-amber-300 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-info"></i> Panduan Bermula
+                </button>
+                <button onclick="openModal('modal-kamus')" class="flex-1 py-3 glass-btn rounded-xl font-semibold text-xs sm:text-sm text-cyan-300 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-book"></i> Koleksi Kamus
+                </button>
+            </div>
+        </section>
+
+        <!-- SCREEN 2: PETA LEVEL (ADVENTURE MAP) -->
+        <section id="screen-levels" class="hidden flex-col max-w-2xl mx-auto w-full space-y-4 pop-in">
+            <div class="glass-panel rounded-2xl p-4 flex justify-between items-center">
+                <div>
+                    <h3 class="font-game text-xl text-amber-300">Pilih Level Pengembaraan</h3>
+                    <p class="text-xs text-slate-400">Kumpulkan sekurang-kurangnya 1 bintang untuk buka level seterusnya!</p>
+                </div>
+                <button onclick="showScreen('screen-menu')" class="glass-btn px-3 py-2 rounded-xl text-xs font-bold text-slate-300">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> Menu
+                </button>
+            </div>
+
+            <!-- Dynamic Level Nodes Container -->
+            <div id="levels-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-3 p-1">
+                <!-- Level buttons injected by JS -->
+            </div>
+        </section>
+
+        <!-- SCREEN 3: GAMEPLAY ARENA -->
+        <section id="screen-game" class="hidden flex-col gap-3 max-w-3xl mx-auto w-full pop-in">
+
+            <!-- Top Game HUD -->
+            <div class="glass-panel rounded-2xl p-3 sm:p-4 flex flex-wrap justify-between items-center gap-2">
+                <!-- Mode & Level / Timer -->
+                <div class="flex items-center gap-3">
+                    <div id="hud-level-badge" class="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-game font-extrabold px-3 py-1 rounded-xl text-xs sm:text-sm">
+                        LVL 1
+                    </div>
+                    <div id="hud-timer-container" class="hidden flex items-center gap-2 bg-slate-900/80 px-3 py-1 rounded-xl border border-rose-500/40 text-rose-400 font-game text-xs sm:text-sm">
+                        <i class="fa-solid fa-stopwatch animate-pulse"></i>
+                        <span id="hud-timer-text">60s</span>
+                    </div>
+                </div>
+
+                <!-- Combo Counter -->
+                <div id="combo-badge" class="hidden bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 rounded-full text-white font-game text-xs animate-bounce shadow-lg">
+                    🔥 COMBO <span id="combo-count">2x</span>
+                </div>
+
+                <!-- Score & Power-ups -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <!-- Lives (If applicable) -->
+                    <div id="hud-lives" class="flex items-center gap-1 text-rose-500 text-sm sm:text-base">
+                        <i class="fa-solid fa-heart"></i>
+                        <i class="fa-solid fa-heart"></i>
+                        <i class="fa-solid fa-heart"></i>
+                    </div>
+
+                    <!-- Score Box -->
+                    <div class="bg-indigo-950/80 px-3 py-1 rounded-xl border border-indigo-500/40 flex items-center gap-1.5 font-game text-xs sm:text-sm text-amber-300">
+                        <i class="fa-solid fa-star text-amber-400"></i>
+                        <span id="hud-score">0</span>
+                    </div>
+
+                    <!-- Powerup Hint Button -->
+                    <button onclick="usePowerup('hint')" id="btn-powerup-hint" class="glass-btn p-2 rounded-xl text-yellow-300 text-xs font-semibold flex items-center gap-1 hover:bg-yellow-500/20" title="Guna Petunjuk (-30 Skor)">
+                        <i class="fa-solid fa-lightbulb"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Time Bar for Time Attack -->
+            <div id="timer-bar-container" class="w-full bg-slate-800 rounded-full h-2 overflow-hidden hidden border border-slate-700">
+                <div id="timer-bar-fill" class="bg-gradient-to-r from-amber-400 to-rose-500 h-full w-full transition-all duration-100"></div>
+            </div>
+
+            <!-- Game Cards Grid (Left 4 vs Right 4) -->
+            <div class="grid grid-cols-2 gap-2 sm:gap-4 my-1">
+                
+                <!-- Left Column -->
+                <div class="flex flex-col gap-2">
+                    <div class="text-center font-game text-xs text-amber-300 uppercase tracking-wider font-semibold bg-amber-500/10 py-1 rounded-lg border border-amber-500/20">
+                        <i class="fa-solid fa-hand-point-down mr-1"></i> Kata Pertama (4)
+                    </div>
+                    <div id="col-left" class="grid grid-cols-1 gap-2">
+                        <!-- Dynamic Left Cards -->
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="flex flex-col gap-2">
+                    <div class="text-center font-game text-xs text-cyan-300 uppercase tracking-wider font-semibold bg-cyan-500/10 py-1 rounded-lg border border-cyan-500/20">
+                        <i class="fa-solid fa-hand-point-down mr-1"></i> Kata Kedua (4)
+                    </div>
+                    <div id="col-right" class="grid grid-cols-1 gap-2">
+                        <!-- Dynamic Right Cards -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Feedback Guidance Banner -->
+            <div id="game-feedback-banner" class="glass-panel rounded-xl p-3 text-center transition-all">
+                <p id="feedback-text" class="text-xs sm:text-sm text-slate-300 font-medium">
+                    Pilih 1 gambar dari lajur Kiri dan 1 gambar dari lajur Kanan untuk membentuk simpulan bahasa.
+                </p>
+            </div>
+
+        </section>
+
+        <!-- SCREEN 4: KEPUTUSAN GAME / RESULT -->
+        <section id="screen-result" class="hidden flex-col items-center text-center max-w-md mx-auto w-full glass-panel rounded-3xl p-6 sm:p-8 space-y-5 pop-in">
+            <div id="result-icon-container" class="text-6xl animate-bounce">
+                🏆
+            </div>
+
+            <div>
+                <h2 id="result-title" class="font-game text-3xl font-extrabold text-amber-300 mb-1">
+                    Tahniah! Level Selesai!
+                </h2>
+                <p id="result-subtitle" class="text-xs sm:text-sm text-slate-300">
+                    Anda telah berjaya menyelesaikan simpulan bahasa dengan cemerlang!
+                </p>
+            </div>
+
+            <!-- Star Rating Display -->
+            <div id="result-stars" class="flex justify-center gap-3 text-3xl text-amber-400 py-1">
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+            </div>
+
+            <!-- Score Summary Card -->
+            <div class="w-full bg-slate-900/80 rounded-2xl p-4 border border-slate-700/80 grid grid-cols-2 gap-3 text-center">
+                <div>
+                    <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Jumlah Skor</span>
+                    <span id="result-final-score" class="font-game text-2xl font-bold text-amber-400">0</span>
+                </div>
+                <div>
+                    <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Max Combo</span>
+                    <span id="result-max-combo" class="font-game text-2xl font-bold text-pink-400">0x</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-2.5 w-full pt-2">
+                <button id="btn-next-level" onclick="nextLevelAction()" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-game font-bold text-base rounded-xl shadow-lg transition">
+                    Level Seterusnya <i class="fa-solid fa-forward ml-1"></i>
+                </button>
+                <button onclick="showScreen('screen-levels')" class="w-full py-3.5 glass-btn text-cyan-300 font-semibold text-sm rounded-xl">
+                    <i class="fa-solid fa-map mr-1"></i> Peta Level
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL 1: KUIZ MAKSUD (SELEPAS PADANAN GAMBAR BETUL) -->
+    <div id="modal-quiz" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-md w-full p-6 text-center border-2 border-amber-500/50 space-y-4 pop-in">
+            <div class="inline-block p-3 rounded-2xl bg-amber-500/20 text-amber-300 text-3xl">🎯</div>
+            
+            <div>
+                <span class="text-[10px] uppercase tracking-widest text-amber-400 font-bold block mb-1">Padanan Gambar Tepat!</span>
+                <h3 id="quiz-phrase" class="font-game text-2xl font-extrabold text-white">---</h3>
+            </div>
+
+            <p class="text-xs text-slate-300 font-medium">Apakah **maksud** yang paling tepat bagi simpulan bahasa ini?</p>
+
+            <div id="quiz-options" class="space-y-2.5 text-left">
+                <!-- Option buttons dynamically generated -->
+            </div>
+
+            <div id="quiz-feedback-text" class="text-xs font-bold min-h-[20px]"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: KAMUS & KOLEKSI SIMPULAN BAHASA -->
+    <div id="modal-kamus" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-xl w-full p-6 max-h-[85vh] flex flex-col justify-between space-y-4 pop-in">
+            <div class="flex justify-between items-center border-b border-slate-700/80 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">📚</span>
+                    <h3 class="font-game text-xl text-amber-300">Kamus Simpulan Bahasa</h3>
+                </div>
+                <button onclick="closeModal('modal-kamus')" class="text-slate-400 hover:text-white text-lg p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Search input -->
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                <input type="text" id="kamus-search" oninput="filterKamus()" placeholder="Cari simpulan bahasa..." class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div id="kamus-list" class="overflow-y-auto max-h-[50vh] pr-1.5 custom-scrollbar space-y-2.5">
+                <!-- Populated dynamically -->
+            </div>
+
+            <button onclick="closeModal('modal-kamus')" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 font-semibold rounded-xl text-xs sm:text-sm text-slate-300 transition">
+                Tutup Kamus
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 3: PANDUAN BERMULA -->
+    <div id="modal-panduan" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-lg w-full p-6 max-h-[85vh] flex flex-col justify-between space-y-4 pop-in">
+            <div class="flex justify-between items-center border-b border-slate-700/80 pb-3">
+                <h3 class="font-game text-xl text-amber-300 flex items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap"></i> Cara Bermain
+                </h3>
+                <button onclick="closeModal('modal-panduan')" class="text-slate-400 hover:text-white text-lg p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="overflow-y-auto max-h-[55vh] pr-2 custom-scrollbar text-xs sm:text-sm text-slate-300 space-y-3.5">
+                <div class="bg-indigo-950/40 p-3.5 rounded-2xl border border-indigo-500/30">
+                    <h4 class="font-bold text-amber-300 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-1"></i> Langkah 1: Padankan Gambar
+                    </h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Pilih 1 gambar dari sebelah kiri & 1 gambar dari sebelah kanan yang membentuk ungkapan Simpulan Bahasa (contoh: 🐛 Ulat + 📖 Buku = Ulat Buku).
+                    </p>
+                </div>
+
+                <div class="bg-indigo-950/40 p-3.5 rounded-2xl border border-indigo-500/30">
+                    <h4 class="font-bold text-cyan-300 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-2"></i> Langkah 2: Kuiz Maksud
+                    </h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Apabila padanan gambar betul, jawab soalan kuiz maksud untuk mendapatkan mata penuh dan pengganda Combo!
+                    </p>
+                </div>
+
+                <div class="bg-indigo-950/40 p-3.5 rounded-2xl border border-indigo-500/30">
+                    <h4 class="font-bold text-pink-300 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-fire"></i> Gandaan Combo & Power-up
+                    </h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Jawab berturut-turut tanpa kesilapan untuk mengaktifkan Combo (2x, 3x, 5x). Gunakan lampu petunjuk 💡 jika anda menghadapi kebuntuan.
+                    </p>
+                </div>
+            </div>
+
+            <button onclick="closeModal('modal-panduan')" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 font-semibold rounded-xl text-xs sm:text-sm text-slate-300 transition">
+                Faham & Mula
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="max-w-4xl mx-auto w-full text-center py-2 text-[11px] text-slate-500 font-medium z-10">
+        Simpulan Bahasa Master Arcade &copy; 2026 • Didik Hibur Bahasa Melayu
+    </footer>
+
+    <script>
+        const GAME_LEVELS = [
+            // Level 1
+            {
+                level: 1,
+                pairs: [
+                    {
+                        id: 'kaki_botol',
+                        left: { title: 'Kaki', emoji: '🦶' },
+                        right: { title: 'Botol', emoji: '🍾' },
+                        phrase: 'Kaki Botol',
+                        meaning: 'Seseorang yang sangat suka minum minuman keras.',
+                        wrongMeanings: ['Suka bermain bola sepak', 'Orang yang rajin berjalan jauh']
+                    },
+                    {
+                        id: 'ulat_buku',
+                        left: { title: 'Ulat', emoji: '🐛' },
+                        right: { title: 'Buku', emoji: '📖' },
+                        phrase: 'Ulat Buku',
+                        meaning: 'Seseorang yang sangat rajin dan suka membaca buku.',
+                        wrongMeanings: ['Buku yang dimakan serangga', 'Orang yang malas belajar']
+                    }
+                ],
+                distractorsLeft: [
+                    { id: 'dis_1a', title: 'Tangan', emoji: '✋' },
+                    { id: 'dis_1b', title: 'Mata', emoji: '👁️' }
+                ],
+                distractorsRight: [
+                    { id: 'dis_1c', title: 'Cawan', emoji: '☕' },
+                    { id: 'dis_1d', title: 'Pensel', emoji: '✏️' }
+                ]
+            },
+            // Level 2
+            {
+                level: 2,
+                pairs: [
+                    {
+                        id: 'batu_api',
+                        left: { title: 'Batu', emoji: '🪨' },
+                        right: { title: 'Api', emoji: '🔥' },
+                        phrase: 'Batu Api',
+                        meaning: 'Seseorang yang suka menghasut dan memecahbelahkan orang.',
+                        wrongMeanings: ['Pekerja di lombong batu', 'Alat menyalakan api']
+                    },
+                    {
+                        id: 'otak_cair',
+                        left: { title: 'Otak', emoji: '🧠' },
+                        right: { title: 'Cair', emoji: '💧' },
+                        phrase: 'Otak Cair',
+                        meaning: 'Seseorang yang sangat pintar dan cepat memahami sesuatu.',
+                        wrongMeanings: ['Seseorang yang pelupa', 'Sakit kepala yang teruk']
+                    }
+                ],
+                distractorsLeft: [
+                    { id: 'dis_2a', title: 'Kayu', emoji: '🪵' },
+                    { id: 'dis_2b', title: 'Jantung', emoji: '🫀' }
+                ],
+                distractorsRight: [
+                    { id: 'dis_2c', title: 'Ais', emoji: '🧊' },
+                    { id: 'dis_2d', title: 'Asap', emoji: '💨' }
+                ]
+            },
+            // Level 3
+            {
+                level: 3,
+                pairs: [
+                    {
+                        id: 'ayam_tambatan',
+                        left: { title: 'Ayam', emoji: '🐔' },
+                        right: { title: 'Tambatan', emoji: '🪢' },
+                        phrase: 'Ayam Tambatan',
+                        meaning: 'Orang yang menjadi harapan utama dalam sesebuah pasukan.',
+                        wrongMeanings: ['Ayam yang diikat di reban', 'Pemain yang selalu kalah']
+                    },
+                    {
+                        id: 'telinga_kuali',
+                        left: { title: 'Telinga', emoji: '👂' },
+                        right: { title: 'Kuali', emoji: '🍳' },
+                        phrase: 'Telinga Kuali',
+                        meaning: 'Seseorang yang kalis maki atau tidak mahu mendengar nasihat.',
+                        wrongMeanings: ['Membuat kuali besi', 'Pandai memasak di dapur']
+                    }
+                ],
+                distractorsLeft: [
+                    { id: 'dis_3a', title: 'Itik', emoji: '🦆' },
+                    { id: 'dis_3b', title: 'Hidung', emoji: '👃' }
+                ],
+                distractorsRight: [
+                    { id: 'dis_3c', title: 'Periuk', emoji: '🍲' },
+                    { id: 'dis_3d', title: 'Rantai', emoji: '⛓️' }
+                ]
+            },
+            // Level 4
+            {
+                level: 4,
+                pairs: [
+                    {
+                        id: 'makan_angin',
+                        left: { title: 'Makan', emoji: '🍽️' },
+                        right: { title: 'Angin', emoji: '💨' },
+                        phrase: 'Makan Angin',
+                        meaning: 'Pergi bersiar-siar atau melancong untuk berehat.',
+                        wrongMeanings: ['Berada di luar ketika ribut', 'Makan makanan basi']
+                    },
+                    {
+                        id: 'tangan_terbuka',
+                        left: { title: 'Tangan', emoji: '✋' },
+                        right: { title: 'Terbuka', emoji: '📂' },
+                        phrase: 'Tangan Terbuka',
+                        meaning: 'Menerima kedatangan seseorang dengan gembira dan ikhlas.',
+                        wrongMeanings: ['Minta sedekah tepi jalan', 'Tangan yang luka terbuka']
+                    }
+                ],
+                distractorsLeft: [
+                    { id: 'dis_4a', title: 'Minum', emoji: '🥤' },
+                    { id: 'dis_4b', title: 'Kaki', emoji: '🦶' }
+                ],
+                distractorsRight: [
+                    { id: 'dis_4c', title: 'Hujan', emoji: '🌧️' },
+                    { id: 'dis_4d', title: 'Tutup', emoji: '📁' }
+                ]
+            },
+            // Level 5
+            {
+                level: 5,
+                pairs: [
+                    {
+                        id: 'kera_sumbang',
+                        left: { title: 'Kera', emoji: '🐒' },
+                        right: { title: 'Sumbang', emoji: '🎵' },
+                        phrase: 'Kera Sumbang',
+                        meaning: 'Orang yang tidak suka bergaul dengan orang lain.',
+                        wrongMeanings: ['Haiwan yang pandai menyanyi', 'Suka memberi sumbangan wang']
+                    },
+                    {
+                        id: 'anak_emas',
+                        left: { title: 'Anak', emoji: '👶' },
+                        right: { title: 'Emas', emoji: '🪙' },
+                        phrase: 'Anak Emas',
+                        meaning: 'Anak atau pekerja yang sangat disayangi oleh ibu bapa/majikan.',
+                        wrongMeanings: ['Anak yang memakai banyak emas', 'Patung kanak-kanak emas']
+                    }
+                ],
+                distractorsLeft: [
+                    { id: 'dis_5a', title: 'Kucing', emoji: '🐱' },
+                    { id: 'dis_5b', title: 'Ibu', emoji: '👩' }
+                ],
+                distractorsRight: [
+                    { id: 'dis_5c', title: 'Lagu', emoji: '🎶' },
+                    { id: 'dis_5d', title: 'Perak', emoji: '🥈' }
+                ]
+            },
+            // Level 6
+            {
+                level: 6,
+                pairs: [
+                    {
+                        id: 'mulut_celupar',
+                        left: { title: 'Mulut', emoji: '👄' },
+                        right: { title: 'Celupar', emoji: '🌶️' },
+                        phrase: 'Mulut Celupar',
+                        meaning: 'Seseorang yang suka bercakap kasar atau tidak sopan.',
+                        wrongMeanings: ['Suka makan pedas', 'Pandai berpidato di khalayak']
+                    },
+                    {
+                        id: 'kaki_bangku',
+                        left: { title: 'Kaki', emoji: '🦶' },
+                        right: { title: 'Bangku', emoji: '🪑' },
+                        phrase: 'Kaki Bangku',
+                        meaning: 'Seseorang yang tidak pandai bermain bola sepak.',
+                        wrongMeanings: ['Membuat kerusi daripada kayu', 'Orang yang rajin bersukan']
+                    }
+                ],
+                distractorsLeft: [
+                    { id: 'dis_6a', title: 'Gigi', emoji: '🦷' },
+                    { id: 'dis_6b', title: 'Lutut', emoji: '🦵' }
+                ],
+                distractorsRight: [
+                    { id: 'dis_6c', title: 'Garam', emoji: '🧂' },
+                    { id: 'dis_6d', title: 'Meja', emoji: '🛋️' }
+                ]
+            },
+            // Level 7
+            {
+                level: 7,
+                pairs: [
+                    {
+                        id: 'hati_batu',
+                        left: { title: 'Hati', emoji: '❤️' },
+                        right: { title: 'Batu', emoji: '🪨' },
+                        phrase: 'Hati Batu',
+                        meaning: 'Seseorang yang sangat degil dan keras kepala.',
+                        wrongMeanings: ['Sakit organ hati', 'Suka mengumpul batu hiasan']
+                    },
+                    {
+                        id: 'tulang_belut',
+                        left: { title: 'Tulang', emoji: '🦴' },
+                        right: { title: 'Belut', emoji: '🐍' },
+                        phrase: 'Tulang Belut',
+                        meaning: 'Jenis jahitan atau ukiran yang sangat halus dan kemas.',
+                        wrongMeanings: ['Orang yang tiada tulang', 'Suka menangkap belut']
+                    }
+                ],
+                distractorsLeft: [
+                    { id: 'dis_7a', title: 'Darah', emoji: '🩸' },
+                    { id: 'dis_7b', title: 'Daging', emoji: '🥩' }
+                ],
+                distractorsRight: [
+                    { id: 'dis_7c', title: 'Pasir', emoji: '🏖️' },
+                    { id: 'dis_7d', title: 'Ikan', emoji: '🐟' }
+                ]
+            },
+            // Level 8
+            {
+                level: 8,
+                pairs: [
+                    {
+                        id: 'mandi_peluh',
+                        left: { title: 'Mandi', emoji: '🚿' },
+                        right: { title: 'Peluh', emoji: '💦' },
+                        phrase: 'Mandi Peluh',
+                        meaning: 'Bekerja dengan sangat kuat dan bersungguh-sungguh.',
+                        wrongMeanings: ['Mandi guna air panas', 'Orang yang malas mandi']
+                    },
+                    {
+                        id: 'telinga_lintah',
+                        left: { title: 'Telinga', emoji: '👂' },
+                        right: { title: 'Lintah', emoji: '🪱' },
+                        phrase: 'Telinga Lintah',
+                        meaning: 'Tajam pendengaran dan mudah mendengar suara perlahan.',
+                        wrongMeanings: ['Telinga digigit serangga', 'Pekak dan tidak boleh mendengar']
+                    }
+                ],
+                distractorsLeft: [
+                    { id: 'dis_8a', title: 'Basuh', emoji: '🧼' },
+                    { id: 'dis_8b', title: 'Mata', emoji: '👀' }
+                ],
+                distractorsRight: [
+                    { id: 'dis_8c', title: 'Air', emoji: '🚰' },
+                    { id: 'dis_8d', title: 'Ulat', emoji: '🐛' }
+                ]
+            },
+            // Level 9
+            {
+                level: 9,
+                pairs: [
+                    {
+                        id: 'kepala_angin',
+                        left: { title: 'Kepala', emoji: '🗣️' },
+                        right: { title: 'Angin', emoji: '💨' },
+                        phrase: 'Kepala Angin',
+                        meaning: 'Orang yang perangainya mudah berubah-ubah tanpa sebab jelas.',
+                        wrongMeanings: ['Sakit kepala akibat angin', 'Topi yang ditiup angin']
+                    },
+                    {
+                        id: 'rabun_ayam',
+                        left: { title: 'Rabun', emoji: '👓' },
+                        right: { title: 'Ayam', emoji: '🐔' },
+                        phrase: 'Rabun Ayam',
+                        meaning: 'Penglihatan yang kurang jelas pada waktu senja.',
+                        wrongMeanings: ['Ayam yang pakai cermin mata', 'Buta sepenuhnya sepanjang masa']
+                    }
+                ],
+                distractorsLeft: [
+                    { id: 'dis_9a', title: 'Rambut', emoji: '💇' },
+                    { id: 'dis_9b', title: 'Cermin', emoji: '🪞' }
+                ],
+                distractorsRight: [
+                    { id: 'dis_9c', title: 'Awan', emoji: '☁️' },
+                    { id: 'dis_9d', title: 'Burung', emoji: '🐦' }
+                ]
+            },
+            // Level 10
+            {
+                level: 10,
+                pairs: [
+                    {
+                        id: 'ambil_hati',
+                        left: { title: 'Ambil', emoji: '🤲' },
+                        right: { title: 'Hati', emoji: '❤️' },
+                        phrase: 'Ambil Hati',
+                        meaning: 'Melakukan sesuatu untuk menyenangkan atau memikat orang.',
+                        wrongMeanings: ['Mencuri organ hati', 'Merajuk dengan kawan']
+                    },
+                    {
+                        id: 'pasang_telinga',
+                        left: { title: 'Pasang', emoji: '🛠️' },
+                        right: { title: 'Telinga', emoji: '👂' },
+                        phrase: 'Pasang Telinga',
+                        meaning: 'Mendengar dengan teliti tentang sesuatu perbualan.',
+                        wrongMeanings: ['Guna alat pendengaran', 'Menutup telinga rapat']
+                    }
+                ],
+                distractorsLeft: [
+                    { id: 'dis_10a', title: 'Beri', emoji: '🎁' },
+                    { id: 'dis_10b', title: 'Ikat', emoji: '🪢' }
+                ],
+                distractorsRight: [
+                    { id: 'dis_10c', title: 'Jiwa', emoji: '✨' },
+                    { id: 'dis_10d', title: 'Mata', emoji: '👁️' }
+                ]
+            }
+        ];
+
+        let currentMode = 'adventure'; // 'adventure' or 'timeattack'
+        let currentLevelIdx = 0;
+        let score = 0;
+        let comboCount = 0;
+        let maxCombo = 0;
+        let lives = 3;
+        let selectedLeft = null;
+        let selectedRight = null;
+        let matchedIds = new Set();
+        let soundEnabled = true;
+        let levelStars = JSON.parse(localStorage.getItem('simpulan_stars')) || {};
+        let highScore = parseInt(localStorage.getItem('simpulan_highscore')) || 0;
+        let timeAttackTimer = null;
+        let timeRemaining = 60;
+
+        // Audio Context Synthesizer
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'match') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                    osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.setValueAtTime(160, now + 0.1);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'victory') {
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.type = 'triangle';
+                        o.frequency.setValueAtTime(freq, now + idx * 0.1);
+                        g.gain.setValueAtTime(0.1, now + idx * 0.1);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.25);
+                        o.start(now + idx * 0.1);
+                        o.stop(now + idx * 0.1 + 0.25);
+                    });
+                }
+            } catch (e) {
+                console.log('Audio playback error', e);
+            }
+        }
+
+        function toggleAudio() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('sound-icon');
+            icon.className = soundEnabled ? 'fa-solid fa-volume-high text-sm sm:text-base' : 'fa-solid fa-volume-xmark text-sm sm:text-base text-slate-500';
+        }
+
+        function showScreen(screenId) {
+            ['screen-menu', 'screen-levels', 'screen-game', 'screen-result'].forEach(id => {
+                const el = document.getElementById(id);
+                if (id === screenId) {
+                    el.classList.remove('hidden');
+                    el.classList.add('flex');
+                } else {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                }
+            });
+
+            if (screenId === 'screen-menu') {
+                clearInterval(timeAttackTimer);
+            } else if (screenId === 'screen-levels') {
+                renderLevelMap();
+            }
+
+            document.getElementById('nav-high-score').innerText = highScore;
+        }
+
+        function selectMode(mode) {
+            playSound('click');
+            currentMode = mode;
+            if (mode === 'adventure') {
+                showScreen('screen-levels');
+            } else {
+                startModeTimeAttack();
+            }
+        }
+
+        function renderLevelMap() {
+            const container = document.getElementById('levels-grid');
+            container.innerHTML = '';
+
+            GAME_LEVELS.forEach((lvl, idx) => {
+                const stars = levelStars[lvl.level] || 0;
+                const isUnlocked = idx === 0 || (levelStars[GAME_LEVELS[idx - 1].level] && levelStars[GAME_LEVELS[idx - 1].level] > 0);
+
+                const btn = document.createElement('button');
+                btn.className = `p-3.5 rounded-2xl flex flex-col items-center justify-between transition border ${
+                    isUnlocked 
+                        ? 'glass-btn border-amber-500/40 hover:border-amber-400 text-white' 
+                        : 'bg-slate-900/50 border-slate-800 text-slate-600 opacity-60 cursor-not-allowed'
+                }`;
+
+                btn.disabled = !isUnlocked;
+                btn.onclick = () => startAdventureLevel(idx);
+
+                let starIcons = '';
+                for (let s = 1; s <= 3; s++) {
+                    starIcons += `<i class="fa-solid fa-star text-[10px] ${s <= stars ? 'text-amber-400' : 'text-slate-700'}"></i>`;
+                }
+
+                btn.innerHTML = `
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Level</span>
+                    <span class="font-game text-2xl font-bold text-amber-300 mb-1">${lvl.level}</span>
+                    <div class="flex gap-1">${isUnlocked ? starIcons : '<i class="fa-solid fa-lock text-xs text-slate-600"></i>'}</div>
+                `;
+
+                container.appendChild(btn);
+            });
+        }
+
+        function startAdventureLevel(idx) {
+            playSound('click');
+            currentLevelIdx = idx;
+            score = 0;
+            comboCount = 0;
+            maxCombo = 0;
+            lives = 3;
+
+            document.getElementById('hud-level-badge').innerText = `LVL ${idx + 1}`;
+            document.getElementById('hud-timer-container').classList.add('hidden');
+            document.getElementById('timer-bar-container').classList.add('hidden');
+            document.getElementById('hud-lives').classList.remove('hidden');
+
+            updateLivesDisplay();
+            showScreen('screen-game');
+            loadLevelBoard();
+        }
+
+        function startModeTimeAttack() {
+            playSound('click');
+            currentLevelIdx = 0;
+            score = 0;
+            comboCount = 0;
+            maxCombo = 0;
+            timeRemaining = 60;
+
+            document.getElementById('hud-level-badge').innerText = `⚡ TIME ATTACK`;
+            document.getElementById('hud-timer-container').classList.remove('hidden');
+            document.getElementById('timer-bar-container').classList.remove('hidden');
+            document.getElementById('hud-lives').classList.add('hidden');
+
+            showScreen('screen-game');
+            loadLevelBoard();
+
+            // Start countdown loop
+            clearInterval(timeAttackTimer);
+            timeAttackTimer = setInterval(() => {
+                timeRemaining--;
+                document.getElementById('hud-timer-text').innerText = `${timeRemaining}s`;
+                document.getElementById('timer-bar-fill').style.width = `${(timeRemaining / 60) * 100}%`;
+
+                if (timeRemaining <= 0) {
+                    clearInterval(timeAttackTimer);
+                    endGame(true);
+                }
+            }, 1000);
+        }
+
+        function loadLevelBoard() {
+            selectedLeft = null;
+            selectedRight = null;
+            matchedIds.clear();
+
+            document.getElementById('hud-score').innerText = score;
+            updateComboDisplay();
+            resetFeedbackBanner();
+
+            const levelData = GAME_LEVELS[currentLevelIdx];
+
+            // Mix real pair cards and distractors
+            let leftList = [
+                ...levelData.pairs.map(p => ({ id: p.id, ...p.left })),
+                ...levelData.distractorsLeft.map(d => ({ id: d.id, title: d.title, emoji: d.emoji }))
+            ].sort(() => Math.random() - 0.5);
+
+            let rightList = [
+                ...levelData.pairs.map(p => ({ id: p.id, ...p.right })),
+                ...levelData.distractorsRight.map(d => ({ id: d.id, title: d.title, emoji: d.emoji }))
+            ].sort(() => Math.random() - 0.5);
+
+            renderCardsColumn('col-left', leftList, 'left');
+            renderCardsColumn('col-right', rightList, 'right');
+        }
+
+        function renderCardsColumn(containerId, list, side) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            list.forEach(item => {
+                const card = document.createElement('div');
+                card.id = `card-${side}-${item.id}`;
+                card.className = `game-card glass-panel rounded-2xl p-3 flex items-center justify-between border border-white/10`;
+                card.onclick = () => selectCard(side, item.id, card);
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-2xl sm:text-3xl">${item.emoji}</span>
+                        <h4 class="font-game text-xs sm:text-sm font-bold text-white">${item.title}</h4>
+                    </div>
+                    <i class="fa-solid fa-circle-check text-emerald-400 text-sm opacity-0 check-icon"></i>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function selectCard(side, itemId, element) {
+            if (element.classList.contains('matched')) return;
+
+            playSound('click');
+
+            const container = document.getElementById(`col-${side}`);
+            container.querySelectorAll('.game-card').forEach(c => {
+                if (!c.classList.contains('matched')) c.classList.remove('selected');
+            });
+
+            element.classList.add('selected');
+
+            if (side === 'left') selectedLeft = itemId;
+            else selectedRight = itemId;
+
+            checkMatch();
+        }
+
+        function checkMatch() {
+            if (!selectedLeft || !selectedRight) return;
+
+            const leftEl = document.getElementById(`card-left-${selectedLeft}`);
+            const rightEl = document.getElementById(`card-right-${selectedRight}`);
+
+            const levelData = GAME_LEVELS[currentLevelIdx];
+            const pairFound = levelData.pairs.find(p => p.id === selectedLeft && p.id === selectedRight);
+
+            if (pairFound) {
+                // Correct Picture Pair! Launch Meaning Quiz
+                playSound('match');
+                openQuizModal(pairFound);
+            } else {
+                // Wrong Match
+                playSound('wrong');
+                comboCount = 0;
+                updateComboDisplay();
+
+                if (currentMode === 'adventure') {
+                    lives--;
+                    updateLivesDisplay();
+                }
+
+                [leftEl, rightEl].forEach(el => {
+                    if (el) {
+                        el.classList.add('shake-anim');
+                        setTimeout(() => el.classList.remove('shake-anim'), 400);
+                        el.classList.remove('selected');
+                    }
+                });
+
+                const feedback = document.getElementById('feedback-text');
+                feedback.innerText = '❌ Gambar tidak padan! Cuba semula.';
+                feedback.className = 'text-xs sm:text-sm text-rose-400 font-bold shake-anim';
+                setTimeout(resetFeedbackBanner, 1500);
+
+                selectedLeft = null;
+                selectedRight = null;
+
+                if (currentMode === 'adventure' && lives <= 0) {
+                    setTimeout(() => endGame(false), 500);
+                }
+            }
+        }
+
+        function openQuizModal(pair) {
+            document.getElementById('quiz-phrase').innerText = pair.phrase;
+            const container = document.getElementById('quiz-options');
+            const feedback = document.getElementById('quiz-feedback-text');
+            container.innerHTML = '';
+            feedback.innerText = '';
+
+            const options = [
+                { text: pair.meaning, correct: true },
+                { text: pair.wrongMeanings[0], correct: false },
+                { text: pair.wrongMeanings[1], correct: false }
+            ].sort(() => Math.random() - 0.5);
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-600/60 text-xs sm:text-sm text-slate-200 transition font-medium";
+                btn.innerText = opt.text;
+                btn.onclick = () => submitQuizAnswer(opt.correct, btn, pair);
+                container.appendChild(btn);
+            });
+
+            openModal('modal-quiz');
+        }
+
+        function submitQuizAnswer(isCorrect, btnElement, pair) {
+            const feedback = document.getElementById('quiz-feedback-text');
+            const buttons = document.querySelectorAll('#quiz-options button');
+            buttons.forEach(b => b.disabled = true);
+
+            if (isCorrect) {
+                playSound('match');
+                btnElement.className = "w-full text-left p-3 rounded-xl bg-emerald-600/90 border border-emerald-400 text-xs sm:text-sm text-white font-bold";
+                
+                comboCount++;
+                if (comboCount > maxCombo) maxCombo = comboCount;
+
+                const comboMultiplier = Math.min(comboCount, 5);
+                const gainedScore = 100 * comboMultiplier;
+                score += gainedScore;
+
+                document.getElementById('hud-score').innerText = score;
+                updateComboDisplay();
+
+                feedback.innerText = `✨ Tepat sekali! +${gainedScore} Mata`;
+                feedback.className = "text-xs font-bold text-emerald-400 mb-1";
+
+                matchedIds.add(pair.id);
+
+                // Mark cards as matched in UI
+                const leftEl = document.getElementById(`card-left-${pair.id}`);
+                const rightEl = document.getElementById(`card-right-${pair.id}`);
+                [leftEl, rightEl].forEach(el => {
+                    if (el) {
+                        el.classList.remove('selected');
+                        el.classList.add('matched');
+                        el.querySelector('.check-icon').classList.remove('opacity-0');
+                    }
+                });
+
+                setTimeout(() => {
+                    closeModal('modal-quiz');
+                    selectedLeft = null;
+                    selectedRight = null;
+
+                    const levelData = GAME_LEVELS[currentLevelIdx];
+                    if (matchedIds.size === levelData.pairs.length) {
+                        if (currentMode === 'adventure') {
+                            setTimeout(() => endGame(true), 600);
+                        } else {
+                            // In Time Attack, load next random level continuously
+                            currentLevelIdx = (currentLevelIdx + 1) % GAME_LEVELS.length;
+                            loadLevelBoard();
+                        }
+                    }
+                }, 1100);
+
+            } else {
+                playSound('wrong');
+                btnElement.className = "w-full text-left p-3 rounded-xl bg-rose-600/90 border border-rose-400 text-xs sm:text-sm text-white font-bold";
+                feedback.innerText = "❌ Maksud kurang tepat!";
+                feedback.className = "text-xs font-bold text-rose-400 mb-1";
+
+                comboCount = 0;
+                updateComboDisplay();
+
+                // Unselect cards
+                const leftEl = document.getElementById(`card-left-${pair.id}`);
+                const rightEl = document.getElementById(`card-right-${pair.id}`);
+                [leftEl, rightEl].forEach(el => { if (el) el.classList.remove('selected'); });
+
+                setTimeout(() => {
+                    closeModal('modal-quiz');
+                    selectedLeft = null;
+                    selectedRight = null;
+                }, 1300);
+            }
+        }
+
+        function updateComboDisplay() {
+            const badge = document.getElementById('combo-badge');
+            if (comboCount > 1) {
+                badge.classList.remove('hidden');
+                document.getElementById('combo-count').innerText = `${comboCount}x`;
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function updateLivesDisplay() {
+            const container = document.getElementById('hud-lives');
+            container.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const heart = document.createElement('i');
+                heart.className = `fa-solid fa-heart ${i < lives ? 'text-rose-500' : 'text-slate-700'}`;
+                container.appendChild(heart);
+            }
+        }
+
+        function resetFeedbackBanner() {
+            const feedback = document.getElementById('feedback-text');
+            feedback.innerText = 'Pilih 1 gambar dari lajur Kiri dan 1 gambar dari lajur Kanan untuk membentuk simpulan bahasa.';
+            feedback.className = 'text-xs sm:text-sm text-slate-300 font-medium';
+        }
+
+        function usePowerup(type) {
+            if (type === 'hint') {
+                const levelData = GAME_LEVELS[currentLevelIdx];
+                const unMatched = levelData.pairs.find(p => !matchedIds.has(p.id));
+
+                if (unMatched) {
+                    playSound('click');
+                    const leftCard = document.getElementById(`card-left-${unMatched.id}`);
+                    const rightCard = document.getElementById(`card-right-${unMatched.id}`);
+
+                    if (leftCard && rightCard) {
+                        [leftCard, rightCard].forEach(c => {
+                            c.classList.add('pulse-glow');
+                            setTimeout(() => c.classList.remove('pulse-glow'), 2000);
+                        });
+                    }
+
+                    if (score >= 30) score -= 30;
+                    document.getElementById('hud-score').innerText = score;
+                }
+            }
+        }
+
+        function endGame(isWin) {
+            clearInterval(timeAttackTimer);
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('simpulan_highscore', highScore);
+            }
+
+            if (isWin) {
+                playSound('victory');
+                triggerConfetti();
+
+                let calculatedStars = 1;
+                if (score >= 300) calculatedStars = 3;
+                else if (score >= 180) calculatedStars = 2;
+
+                if (currentMode === 'adventure') {
+                    const levelNum = GAME_LEVELS[currentLevelIdx].level;
+                    if (!levelStars[levelNum] || levelStars[levelNum] < calculatedStars) {
+                        levelStars[levelNum] = calculatedStars;
+                        localStorage.setItem('simpulan_stars', JSON.stringify(levelStars));
+                    }
+                }
+
+                document.getElementById('result-icon-container').innerText = '🏆';
+                document.getElementById('result-title').innerText = 'Tahniah! Level Selesai!';
+                document.getElementById('result-subtitle').innerText = 'Anda menunjukkan pemahaman simpulan bahasa yang cemerlang!';
+                
+                // Stars HTML
+                let starsHTML = '';
+                for (let s = 1; s <= 3; s++) {
+                    starsHTML += `<i class="fa-solid fa-star ${s <= calculatedStars ? 'text-amber-400' : 'text-slate-700'}"></i>`;
+                }
+                document.getElementById('result-stars').innerHTML = starsHTML;
+
+                const btnNext = document.getElementById('btn-next-level');
+                if (currentMode === 'adventure' && currentLevelIdx + 1 < GAME_LEVELS.length) {
+                    btnNext.classList.remove('hidden');
+                } else {
+                    btnNext.classList.add('hidden');
+                }
+
+            } else {
+                playSound('wrong');
+                document.getElementById('result-icon-container').innerText = '💔';
+                document.getElementById('result-title').innerText = 'Cabaran Tamat!';
+                document.getElementById('result-subtitle').innerText = 'Jangan putus asa! Cuba lagi untuk mempertingkatkan skor anda.';
+                document.getElementById('result-stars').innerHTML = '<span class="text-xs text-rose-400">Tiada Bintang</span>';
+                document.getElementById('btn-next-level').classList.add('hidden');
+            }
+
+            document.getElementById('result-final-score').innerText = score;
+            document.getElementById('result-max-combo').innerText = `${maxCombo}x`;
+
+            showScreen('screen-result');
+        }
+
+        function nextLevelAction() {
+            if (currentLevelIdx + 1 < GAME_LEVELS.length) {
+                startAdventureLevel(currentLevelIdx + 1);
+            } else {
+                showScreen('screen-levels');
+            }
+        }
+
+        function triggerConfetti() {
+            try {
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            } catch (e) {}
+        }
+
+        function renderKamusList(items = null) {
+            const container = document.getElementById('kamus-list');
+            container.innerHTML = '';
+
+            let listToRender = [];
+            if (items) {
+                listToRender = items;
+            } else {
+                GAME_LEVELS.forEach(lvl => {
+                    lvl.pairs.forEach(p => listToRender.push({ level: lvl.level, ...p }));
+                });
+            }
+
+            if (listToRender.length === 0) {
+                container.innerHTML = `<p class="text-xs text-center text-slate-500 py-4">Tiada carian ditemui.</p>`;
+                return;
+            }
+
+            listToRender.forEach(p => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-900/80 p-3 rounded-xl border border-slate-700/70 flex items-start gap-3";
+                div.innerHTML = `
+                    <div class="text-2xl bg-slate-950 p-2 rounded-lg border border-slate-800">
+                        ${p.left.emoji}${p.right.emoji}
+                    </div>
+                    <div class="space-y-0.5">
+                        <div class="flex items-center gap-2">
+                            <strong class="text-amber-300 font-game text-sm">${p.phrase}</strong>
+                            <span class="text-[9px] bg-indigo-950 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30">Level ${p.level || '1'}</span>
+                        </div>
+                        <p class="text-xs text-slate-300">${p.meaning}</p>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function filterKamus() {
+            const query = document.getElementById('kamus-search').value.toLowerCase();
+            let allPairs = [];
+            GAME_LEVELS.forEach(lvl => {
+                lvl.pairs.forEach(p => allPairs.push({ level: lvl.level, ...p }));
+            });
+
+            const filtered = allPairs.filter(p => 
+                p.phrase.toLowerCase().includes(query) || p.meaning.toLowerCase().includes(query)
+            );
+            renderKamusList(filtered);
+        }
+
+        function openModal(id) {
+            playSound('click');
+            if (id === 'modal-kamus') {
+                renderKamusList();
+            }
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // Initialize highscore on load
+        document.getElementById('nav-high-score').innerText = highScore;
+    </script>
+</body>
+</html>
